@@ -2,14 +2,14 @@
 // filepath: src/index.php
 session_start();
 
-// AGGIUNGI QUESTO: Gestione logout
+// Logout
 if (isset($_GET['logout'])) {
     session_destroy();
     header('Location: index.php');
     exit;
 }
 
-// AGGIUNGI QUESTO: Se già loggato, redirect
+// Se già loggato, redirect
 if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     header('Location: account.php');
     exit;

