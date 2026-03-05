@@ -12,7 +12,7 @@ COPY ./src/ /var/www/html/
 
 # Crea la directory per il file segreto (flag)
 RUN mkdir -p /home/bob && \
-    echo "FLAG{5B6Y84SB1SEYEKF2680463SGB}" > /home/bob/secret && \
+    echo "MASTER_KEY:5B6Y84SB1SEYEKF2680463SGB" > /home/bob/secret && \
     chmod 644 /home/bob/secret
 
 # Crea le directory per i file uploadati

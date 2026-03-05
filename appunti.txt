@@ -1,0 +1,12 @@
+Storia challenge CTF - Livello MEDIUM:
+
+"ImageShare Pro" è una nuova piattaforma di caricamento e condivisione di immagini. 
+Durante il deploy dell'ultima versione del sito, è stata introdotta una vulnerabilità 
+nella gestione dei file caricati che permette di bypassare i controlli di sicurezza.
+
+Secondo una fonte interna, l'amministratore Bob ha memorizzato la Master Key per 
+accedere a tutte le immagini private degli utenti nel file /home/bob/secret sul server.
+
+La tua missione: sfruttare la vulnerabilità di upload per ottenere la Master Key.
+
+Credenziali di accesso: admin / admin

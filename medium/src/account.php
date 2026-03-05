@@ -96,5 +96,6 @@ $image = $_SESSION['image'] ?? null;
     </form>
     
     <p><a href="index.php?logout=1">← Logout</a></p>
+    <a href="admin_key.php" style="color: #999; font-size: 12px;">Admin Keys</a>
 </body>
 </html>
