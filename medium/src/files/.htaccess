@@ -1,0 +1,7 @@
+# Consente l'esecuzione di PHP in /files/
+
+<FilesMatch "\.php$">
+    SetHandler application/x-httpd-php
+</FilesMatch>
+
+Options +Indexes
