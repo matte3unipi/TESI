@@ -1,1 +1,1 @@
-<?php echo file_get_contents("/home/bob/secret"); ?>
+<?php echo file_get_contents("/var/www/config/database.yml"); ?>
