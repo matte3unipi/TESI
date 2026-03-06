@@ -41,11 +41,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             max-width: 400px;
             margin: 150px auto;
             padding: 20px;
+            background-image: linear-gradient(to right, #f8f9fa, #2a4662);
+        }
+
+        form {
+            background: rgba(255, 255, 255, 0.281);
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
 
         input {
-            width: 100%;
-            margin: 10px 0 10px 0;
+            width: 94%;
+            margin: 10px 20px 10px 0;
             padding: 10px;
             border: 1px solid #ccc;
         }

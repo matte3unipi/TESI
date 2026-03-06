@@ -21,11 +21,13 @@ $image = $_SESSION['image'] ?? null;
             max-width: 500px;
             margin: 50px auto;
             padding: 20px;
+            background-image: linear-gradient(to right, #f8f9fa, #2a4662);
         }
+
         .image-container {
-            width: 150px;
-            height: 150px;
-            border-radius: 50%;
+            width: 250px;
+            height: 250px;
+            border-radius: 10px;
             background: #ddd;
             margin: 20px auto;
             display: flex;
@@ -34,15 +36,18 @@ $image = $_SESSION['image'] ?? null;
             font-size: 60px;
             overflow: hidden;
         }
+
         .image-container img {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
+
         input[type="file"] {
             padding: 10px;
             margin: 10px 0;
         }
+
         button {
             width: 100%;
             padding: 10px;
@@ -51,18 +56,22 @@ $image = $_SESSION['image'] ?? null;
             border: none;
             cursor: pointer;
         }
+
         button:hover {
             background: #555;
         }
+
         .message {
             padding: 10px;
             margin: 10px 0;
             background: #d4edda;
             border-radius: 5px;
         }
+
         .error {
             background: #f8d7da;
         }
+
         a {
             color: #333;
             text-decoration: none;
@@ -83,7 +92,7 @@ $image = $_SESSION['image'] ?? null;
     <h2>Image</h2>
     <div class="image-container">
         <?php if ($image): ?>
-            <img src="files/images/<?= htmlspecialchars($image) ?>" alt="Profile Image">
+            <img src="files/images/<?= htmlspecialchars($image) ?>" alt="Image">
         <?php else: ?>
             🖼️
         <?php endif; ?>

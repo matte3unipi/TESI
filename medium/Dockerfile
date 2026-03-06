@@ -11,9 +11,9 @@ RUN sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf
 COPY ./src/ /var/www/html/
 
 # Crea la directory per il file segreto (flag)
-RUN mkdir -p /home/bob && \
-    echo "MASTER_KEY:5B6Y84SB1SEYEKF2680463SGB" > /home/bob/secret && \
-    chmod 644 /home/bob/secret
+RUN mkdir -p /var/www/config && \
+    echo "MASTER_KEY:5B6Y84SB1SEYEKF2680463SGB" > /var/www/config/database.yml && \
+    chmod 644 /var/www/config/database.yml
 
 # Crea le directory per i file uploadati
 RUN mkdir -p /var/www/html/files/images && \

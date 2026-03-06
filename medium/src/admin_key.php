@@ -11,6 +11,6 @@ header('Content-Type: text/html; charset=UTF-8');
 <body>
     <h1>403 Forbidden</h1>
     <p>Access denied. Admin credentials required.</p>
-    <p><small>Resource: /home/bob/secret</small></p>
+    <p><small>Resource: /var/www/config/database.yml</small></p>
 </body>
 </html>
