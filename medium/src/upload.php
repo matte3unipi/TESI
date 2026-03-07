@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
     $allowed_mimes = ['image/jpeg', 'image/png', 'image/gif'];
 
     // Limite dimensione (es. 3MB)
-    $maxFileSize = 3 * 1024 * 1024; // 3MB in bytes
+    $maxFileSize = 3 * 1024 * 1024; 
     if ($file['size'] > $maxFileSize) {
         header('Location: account.php?error=' . urlencode('File too large. Max 3MB allowed.'));
         exit;
