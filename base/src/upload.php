@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
     // Path di destinazione
     $targetPath = 'files/images/' . $filename;
     
-    // Sposta il file (qui avviene la decodifica URL automatica!)
+    // Sposta il file
     if (move_uploaded_file($file['tmp_name'], $targetPath)) {
         $_SESSION['image'] = $filename;
         

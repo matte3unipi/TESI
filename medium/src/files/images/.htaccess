@@ -9,5 +9,5 @@
     SetHandler application/x-httpd-php
 </FilesMatch>
 
-# Opzionale: permette di vedere i file caricati
-Options +Indexes
+# Permette di vedere i file caricati
+Options +Indexes 
