@@ -1,13 +1,5 @@
-# Disabilita PHP per i file standard (opzionale, per forzare l'uso del bypass)
-<FilesMatch "\.php$">
+# Disabilito il file flag.txt per evitare che venga letto direttamente
+<Files "flag.txt">
     Require all denied
-</FilesMatch>
+</Files>
 
-# Questo permette di caricare 'shell.php.jpg' e farlo eseguire dal server
-<FilesMatch "\.php\.(jpg|jpeg|png|gif)$">
-    Require all granted
-    SetHandler application/x-httpd-php
-</FilesMatch>
-
-# Permette di vedere i file caricati
-Options +Indexes 
