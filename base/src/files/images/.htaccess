@@ -1,4 +1,4 @@
-# Vulnerabilità possibile eseguire file php
-<FilesMatch "\.php$">
-    SetHandler application/x-httpd-php
-</FilesMatch>
+# Disabilito il file flag.txt per evitare che venga letto direttamente
+<Files "flag.txt">
+    Require all denied
+</Files>

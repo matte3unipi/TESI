@@ -1,4 +1,0 @@
-# Vulnerabilità possibile eseguire file php
-<FilesMatch "\.php$">
-    SetHandler application/x-httpd-php
-</FilesMatch>

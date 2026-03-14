@@ -1,94 +1,112 @@
 <?php
-// filepath: src/index.php
+// filepath: src/account.php
 session_start();
 
-// Logout
-if (isset($_GET['logout'])) {
-    session_destroy();
-    header('Location: index.php');
-    exit;
-}
+// Login effettuato
+$_SESSION['logged_in'] = true;
+$_SESSION['username'] = 'user123';
 
-// Se già loggato, redirect
-if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
-    header('Location: account.php');
-    exit;
-}
+// Commenti success o error cancellati all'avvio
+unset($_SESSION['success']);
+unset($_SESSION['error']);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = $_POST['username'] ?? '';
-    $password = $_POST['password'] ?? '';
-    
-    if ($username === 'admin' && $password === 'admin') {
-        $_SESSION['logged_in'] = true;
-        $_SESSION['username'] = $username;
-        header('Location: account.php');
-        exit;
-    } else {
-        $error = 'Credenziali non valide';
-    }
-}
+$image = $_SESSION['image'] ?? null;
 ?>
 <!DOCTYPE html>
 <html lang="it">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
+    <title>Account</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 400px;
-            margin: 150px auto;
+            max-width: 500px;
+            margin: 50px auto;
             padding: 20px;
             background-image: linear-gradient(to right, #f8f9fa, #2a4662);
         }
 
-        form {
-            background: rgba(255, 255, 255, 0.281);
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        .image-container {
+            width: 250px;
+            height: 250px;
+            border-radius: 10px;
+            background: #ddd;
+            margin: 20px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            overflow: hidden;
         }
 
-        input {
-            width: 94%;
-            margin: 10px 20px 10px 0;
+        .image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        input[type="file"] {
             padding: 10px;
-            border: 1px solid #ccc;
+            margin: 10px 0;
         }
 
         button {
             width: 100%;
             padding: 10px;
-            margin-top: 5px;
-            margin-bottom: 15px;
             background: #333;
             color: white;
             border: none;
             cursor: pointer;
         }
 
+        button:hover {
+            background: #555;
+        }
+
+        .message {
+            padding: 10px;
+            margin: 10px 0;
+            background: #d4edda;
+            border-radius: 5px;
+        }
+
         .error {
-            color: red;
-            display: none;
+            background: #f8d7da;
+        }
+
+        a {
+            color: #333;
+            text-decoration: none;
         }
     </style>
 </head>
 <body>
-    <h1>Login</h1>
-    <form id="loginForm" method="POST">
-        <label>Username</label>
-        <input type="text" id="username" name="username" required>
-        
-        <label>Password</label>
-        <input type="password" id="password" name="password" required>
-        
-        <button type="submit">Accedi</button>
-        <?php if (isset($error)): ?>
-            <p class="error"><?= htmlspecialchars($error) ?></p>
+    <h1>Account: <?= htmlspecialchars($_SESSION['username']) ?></h1>
+    
+    <?php if (isset($_GET['success'])): ?>
+        <div class="message"><?= htmlspecialchars($_GET['success']) ?></div>
+    <?php endif; ?>
+    
+    <?php if (isset($_GET['error'])): ?>
+        <div class="message error"><?= htmlspecialchars($_GET['error']) ?></div>
+    <?php endif; ?>
+    
+    <h2>Image</h2>
+    <div class="image-container">
+        <?php if ($image): ?>
+            <img src="files/images/<?= htmlspecialchars($image) ?>" alt="Image">
+        <?php else: ?>
+            🖼️
         <?php endif; ?>
-    </form>
     </div>
+    
+    <h3>Upload Image</h3>
+    <form action="upload.php" method="POST" enctype="multipart/form-data">
+        <input type="file" name="image" accept="image/*" required>
+        <button type="submit">Upload</button>
+    </form>
+    
+    <p><a href="files/images/flag.txt">Download flag</a></p>
 </body>
 </html>

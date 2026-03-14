@@ -10,20 +10,22 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
     $file = $_FILES['image'];
+    $baseDir = __DIR__ . '/files/images/';
     
-    // VULNERABILITÀ 1: Accetta qualsiasi tipo di file (anche PHP)
-    $filename = $file['name'];
+    // Accetta qualsiasi tipo di file (anche PHP)
+    $filename = basename($file['name']);
     
-    // VULNERABILITÀ 2: Sanitizzazione debole del path
-    // Rimuove solo '../' ma non gestisce URL encoding
-    $filename = str_replace('../', '', $filename);
+    // Real path di destinazione (directory "files/images/")
+    $targetPath = $baseDir . $filename;
 
-    // VULNERABILITÀ CRITICA: Decodifica DOPO il filtro
-    // Questo permette a ..%2f di bypassare il filtro
-    $filename = rawurldecode($filename);
-    
-    // Path di destinazione
-    $targetPath = 'files/images/' . $filename;
+    $realPath = realpath(dirname($targetPath));
+    $realBase = realpath($baseDir);
+
+    // Verifica che il file sia all'interno della directory "files/images/"
+    if ($realPath === false || $realBase === false || $realPath !== $realBase) {
+        header('Location: index.php?error=Invalid file path');
+        exit;
+    }
     
     // Sposta il file
     if (move_uploaded_file($file['tmp_name'], $targetPath)) {
@@ -31,11 +33,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
         
         // Messaggio che rivela il path finale
         $message = "The file images/" . $filename . " has been uploaded.";
-        header('Location: account.php?success=' . urlencode($message));
+        header('Location: index.php?success=' . urlencode($message));
     } else {
-        header('Location: account.php?error=Upload failed');
+        header('Location: index.php?error=Upload failed');
     }
 } else {
-    header('Location: account.php');
+    header('Location: index.php');
 }
 ?>
