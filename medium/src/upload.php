@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
 
     // Verifico size image caricata (> 0) e presenza dimensioni
     $imgInfo = getimagesize($file['tmp_name']);
-    if ($imgInfo === false) {
+    if ($imgInfo === false || $imgInfo[0] <= 0 || $imgInfo[1] <= 0) {
         header('Location: index.php?error=' . urlencode('Size image invalid.'));
         exit;
     }
