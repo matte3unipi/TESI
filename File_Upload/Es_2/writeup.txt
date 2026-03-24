@@ -1,0 +1,348 @@
+=============================================================================
+WRITEUP - Polyglot File Upload Bypass (Esercizio 2)
+=============================================================================
+
+Autore:          Canessa Matteo
+Difficoltà:      Medium
+Obiettivo:       Leggere il file "flag.txt" protetto da .htaccess
+
+=============================================================================
+1. INFORMAZIONI TARGET
+=============================================================================
+
+Tecnologie:      PHP 8.2, Apache 2.4, Docker
+Vulnerabilità:   Improper Extension Validation + Polyglot File
+Flag:            SNH{p0lygl0t_byp4ss_str_p0s_f41l3d}
+
+=============================================================================
+2. DESCRIZIONE SCENARIO
+=============================================================================
+
+L'applicazione web è un sistema di gestione account che permette agli utenti
+autenticati di caricare immagini del profilo. 
+Questa applicazione implementa molteplici controlli di sicurezza:
+
+- Validazione dell'estensione del file
+- Verifica del MIME type con finfo_file()
+- Validazione del contenuto con getimagesize()
+- Limite di dimensione file (3MB)
+- Generazione di nomi file univoci
+
+Tuttavia, il controllo dell'estensione contiene una vulnerabilità logica che
+permette il bypass attraverso l'uso di un file poliglotta. L'obiettivo è
+sfruttare questa debolezza per caricare ed eseguire codice PHP arbitrario
+al fine di leggere il file "flag.txt" protetto da .htaccess.
+
+=============================================================================
+3. RECONNAISSANCE
+=============================================================================
+
+3.1 Analisi dell'Applicazione
+------------------------------
+
+Accedendo al sito si osserva:
+
+- Pagina di account utente con username "user123"
+- Form di upload per immagini del profilo
+- Messaggi di errore dettagliati che rivelano i controlli implementati
+- Link a "flag.txt" che restituisce errore 403 Forbidden
+
+
+3.2 Analisi del Codice Sorgente
+--------------------------------
+
+File: upload.php (semplificato)
+
+Controlli implementati:
+
+1. LIMITE DIMENSIONE:
+
+   <?php
+   $maxFileSize = 3 * 1024 * 1024;
+   if ($file['size'] > $maxFileSize) {
+       header('Location: index.php?error=...');
+       exit;
+   }
+   ?>
+
+2. VALIDAZIONE CONTENUTO IMMAGINE:
+
+   <?php
+   $imgInfo = getimagesize($file['tmp_name']);
+   if ($imgInfo === false || $imgInfo[0] <= 0 || $imgInfo[1] <= 0) {
+       header('Location: index.php?error=...');
+       exit;
+   }
+   ?>
+
+3. VALIDAZIONE MIME TYPE:
+
+   <?php
+   $info = finfo_open(FILEINFO_MIME_TYPE);
+   $mimeType = finfo_file($info, $file['tmp_name']);
+   if (!in_array($mimeType, $allowed_mimes)) {
+       header('Location: index.php?error=...');
+       exit;
+   }
+   ?>
+
+4. VALIDAZIONE ESTENSIONE - VULNERABILE:
+
+   <?php
+   $filenameLower = strtolower($filename);
+   $isAllowed = false;
+   foreach ($allowed_extensions as $ext) {
+       if (strpos($filenameLower, $ext) !== false) {  // VULNERABILITÀ!
+           $isAllowed = true;
+           break;
+       }
+   }
+   ?>
+
+5. NOME FILE UNIVOCO:
+
+   <?php
+   $filename = basename($file['name']);
+   $safeName = uniqid('img_', true) . '_' . $filename;
+   ?>
+
+6. PATH TRAVERSAL PROTECTION:
+
+   <?php
+   $baseDir = __DIR__ . '/files/images/';
+   $targetPath = $baseDir . $safeName;
+   
+   $realPath = realpath(dirname($targetPath));
+   $realBase = realpath($baseDir);
+   
+   if ($realPath === false || $realBase === false || $realPath !== $realBase) {
+      header('Location: index.php?error=...');
+      exit;
+   }
+   ?>
+
+Problemi identificati:
+- strpos() verifica solo la PRESENZA della stringa, non la posizione finale
+- Un file "image.jpg.php" passa il controllo perché contiene "jpg"
+- Apache interpreta l'estensione FINALE (.php), non le precedenti
+
+Protezioni implementate:
+- Path traversal: basename() e realpath() prevengono directory traversal
+- Nomi univoci: uniqid() genera nomi casuali per ogni file
+- Validazione MIME type: verifica il tipo reale del file
+- Validazione contenuto: getimagesize() verifica i magic bytes
+- Limite dimensione: massimo 3MB per file
+
+
+3.3 Analisi File .htaccess
+---------------------------
+
+File: files/images/.htaccess
+
+<Files "flag.txt">
+    Require all denied
+</Files>
+
+Il file .htaccess blocca l'accesso HTTP diretto a flag.txt, ma NON impedisce
+l'esecuzione di file PHP nella stessa directory. Script PHP possono comunque
+leggere il file usando funzioni filesystem come file_get_contents().
+
+
+3.4 Configurazione Apache
+--------------------------
+
+Apache interpreta i file basandosi sull'estensione FINALE:
+- image.jpg       → Servito come immagine statica
+- image.jpg.php   → Interpretato come script PHP (estensione finale .php)
+- image.php.jpg   → Servito come immagine (estensione finale .jpg, non eseguito)
+
+=============================================================================
+4. ANALISI DELLA VULNERABILITÀ
+=============================================================================
+
+Tipo:            Improper Validation of File Extension
+Severity:        HIGH 
+Impatto:         Remote Code Execution (RCE)
+
+Descrizione tecnica:
+L'applicazione utilizza strpos() per verificare la presenza di un'estensione
+valida nel nome del file. Questa funzione restituisce true se la sottostringa
+è trovata in qualsiasi posizione, non solo alla fine del nome.
+
+Vulnerabilità specifica:
+if (strpos($filenameLower, $ext) !== false)
+
+Questa condizione accetta file come:
+- image.jpg       → Valido e sicuro
+- photo.png       → Valido e sicuro
+- image.jpg.php   → PERICOLOSO! Passa il controllo ma esegue PHP
+
+Catena di attacco:
+1. Attaccante crea un'immagine JPG valida con payload PHP nei metadati EXIF
+2. File rinominato come "image.jpg.php" (double extension)
+3. getimagesize() → PASSA (è un'immagine valida)
+4. finfo_file() → PASSA (magic bytes indicano image/jpeg)
+5. strpos($filename, 'jpg') → PASSA (contiene "jpg" nel nome)
+6. File caricato nella directory /files/images/
+7. Apache interpreta .php finale ed esegue il codice
+8. Payload PHP legge flag.txt e restituisce il contenuto
+
+Concetto di File Poliglotta:
+Un file poliglotta è un file valido in più formati simultaneamente:
+- È una JPEG valida (per superare getimagesize e MIME check)
+- Contiene codice PHP eseguibile (nei metadati EXIF/Comment)
+- Viene interpretato da Apache come script PHP (.php finale)
+
+=============================================================================
+5. EXPLOITATION
+=============================================================================
+
+5.1 STEP 0: Preparazione Immagine Base
+---------------------------------------
+
+Prima di tutto, serve un'immagine JPG valida.
+
+
+5.2 STEP 1: Creazione del File Poliglotta
+------------------------------------------
+
+Utilizziamo exiftool per iniettare un payload PHP nei metadati EXIF
+dell'immagine, mantenendola valida come JPEG:
+
+Comando:
+┌─────────────────────────────────────────────────────────────────────┐
+│ $ exiftool -Comment='<?php echo file_get_contents("flag.txt"); ?>' \│
+│            image.jpg -o image.jpg.php                               │
+└─────────────────────────────────────────────────────────────────────┘
+
+Spiegazione:
+- exiftool: Tool per modificare metadati EXIF delle immagini
+- -Comment='...': Inserisce payload PHP nel campo Comment
+- image.jpg: File sorgente (JPEG valida)
+- -o image.jpg.php: Output con doppia estensione
+
+
+Verifica del file creato:
+
+$ file image.jpg.php
+image.jpg.php: JPEG image data, ...
+
+$ exiftool image.jpg.php | grep Comment
+Comment: <?php echo file_get_contents("flag.txt"); ?>
+
+
+5.3 STEP 2: Upload del File Poliglotta
+---------------------------------------
+
+1. Accedere al sito
+2. Nel form "Upload Image", selezionare il file "image.jpg.php"
+3. Cliccare sul pulsante "Upload"
+4. Osservare il messaggio di successo:
+
+   "File uploaded: img_[TIMESTAMP]_image.jpg.php"
+
+Processo di validazione bypassed.
+
+Note:
+- Tutti i controlli di sicurezza sono stati bypassati
+- Il file è tecnicamente un'immagine valida
+- Ma termina con .php quindi verrà eseguito da Apache
+
+
+5.4 STEP 3: Esecuzione e Lettura del Flag
+------------------------------------------
+
+Navigare direttamente all'URL del file caricato.
+
+Quando Apache riceve la richiesta:
+1. Riconosce l'estensione FINALE .php
+2. Passa il file all'interprete PHP (ignora .jpg nel mezzo)
+3. PHP inizia a elaborare il file
+4. PHP incontra il payload nel campo EXIF Comment
+5. Esegue file_get_contents('flag.txt')
+6. Il contenuto di flag.txt viene stampato nella risposta
+
+Output della pagina:
+
+┌─────────────────────────────────────────────────────────────┐
+│ [Dati binari JPEG non stampabili]                           │
+│ ...                                                         │
+│ SNH{p0lygl0t_byp4ss_str_p0s_f41l3d}                         │
+│ ...                                                         │
+│ [Altri dati JPEG]                                           │
+└─────────────────────────────────────────────────────────────┘
+
+Il flag appare tra i dati binari dell'immagine. Per una lettura più pulita,
+visualizzare il sorgente della pagina o usare curl.
+
+
+=============================================================================
+6. CONTROMISURE
+=============================================================================
+
+6.1 CORREZIONE CRITICA: Fix della Validazione Estensione
+---------------------------------------------------------
+
+La vulnerabilità principale è nell'uso di strpos() invece di verificare
+l'estensione finale del file.
+
+CODICE VULNERABILE (estratto da upload.php):
+┌─────────────────────────────────────────────────────────────┐
+│ foreach ($allowed_extensions as $ext) {                     │
+│     if (strpos($filenameLower, $ext) !== false) {           │
+│         $isAllowed = true;                                  │
+│         break;                                              │
+│     }                                                       │
+│ }                                                           │
+└─────────────────────────────────────────────────────────────┘
+
+CODICE CORRETTO:
+┌───────────────────────────────────────────────────────────────────┐
+│ $actualExt = strtolower(pathinfo($filename, PATHINFO_EXTENSION)); │
+│ if (in_array($actualExt, $allowed_extensions)) {                  │
+│     $isAllowed = true;                                            │
+│ }                                                                 │
+└───────────────────────────────────────────────────────────────────┘
+
+Spiegazione:
+- pathinfo($filename, PATHINFO_EXTENSION): estrae SOLO l'estensione finale
+- "image.jpg.php" → restituisce "php" (non passa il controllo)
+- "image.jpg" → restituisce "jpg" (passa il controllo)
+
+
+
+6.2 Directory Non Eseguibile 
+--------------------------------------
+
+Disabilitare COMPLETAMENTE l'esecuzione di PHP nella directory di upload.
+
+File: .htaccess in /files/images/
+
+┌─────────────────────────────────────────────────────────────┐
+│ # Disabilita completamente il motore PHP                    │
+│ php_flag engine off                                         │
+│                                                             │
+│ # Alternativa: nega accesso a tutti i file .php             │
+│ <FilesMatch "\.php$">                                       │
+│     Require all denied                                      │
+│ </FilesMatch>                                               │
+└─────────────────────────────────────────────────────────────┘
+
+Questa è la difesa più importante: anche se un file PHP viene caricato,
+NON verrà MAI eseguito.
+
+
+6.3 Storage Fuori Document Root 
+----------------------------------------------
+
+Salvare i file fuori dalla directory web e servirli tramite script:
+
+<?php
+// Upload in /var/uploads/ (fuori da /var/www/html/)
+$uploadDir = '/var/uploads/images/';
+
+// Servi tramite php con controlli
+// Lo script legge da /var/uploads/ e serve con header Content-Type: image/jpeg
+?>
+
+Questo previene l'accesso diretto e l'esecuzione di qualsiasi file caricato.

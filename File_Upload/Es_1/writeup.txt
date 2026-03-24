@@ -1,0 +1,270 @@
+=============================================================================
+WRITEUP - Unrestricted File Upload (Esercizio 1)
+=============================================================================
+
+Autore:          Canessa Matteo
+Difficoltà:      Easy
+Obiettivo:       Leggere il file "flag.txt" protetto da .htaccess
+
+=============================================================================
+1. INFORMAZIONI TARGET
+=============================================================================
+
+Tecnologie:      PHP 8.2, Apache 2.4, Docker
+Vulnerabilità:   Unrestricted Upload of File with Dangerous Type
+Flag:            SNH{unr3str1ct3d_upl04d_n0_v4lid4ti0n}
+
+=============================================================================
+2. DESCRIZIONE SCENARIO
+=============================================================================
+
+L'applicazione web è un sistema di gestione account che permette agli utenti
+autenticati di caricare immagini del profilo. La funzionalità di upload non
+implementa alcun controllo sul tipo di file caricato, permettendo a un
+attaccante di caricare file PHP eseguibili.
+
+Nel sistema è presente un file "flag.txt" che contiene informazioni sensibili.
+Questo file è protetto da un file .htaccess che impedisce l'accesso diretto
+via HTTP. L'obiettivo è sfruttare la vulnerabilità di upload per leggere il
+contenuto del file protetto.
+
+=============================================================================
+3. RECONNAISSANCE
+=============================================================================
+
+3.1 Analisi dell'Applicazione
+------------------------------
+
+Accedendo si osserva:
+
+- Pagina di account utente con username "user123"
+- Form di upload per immagini del profilo
+- Messaggio che rivela il path del file caricato
+- Link a "flag.txt" che restituisce errore 403 Forbidden
+
+
+3.2 Analisi del Codice Sorgente
+--------------------------------
+
+File: upload.php (semplificato)
+
+<?php
+    $file = $_FILES['image'];
+    $baseDir = __DIR__ . '/files/images/';
+
+    $filename = basename($file['name']);  // Nessuna validazione!
+    $targetPath = $baseDir . $filename;
+
+    $realPath = realpath(dirname($targetPath));
+    $realBase = realpath($baseDir);
+
+    if ($realPath === false || $realBase === false || $realPath !== $realBase) {
+        // Path traversal bloccato
+    }
+
+    if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+        // File caricato con successo
+    }
+?>
+
+Problemi identificati:
+- Nessuna validazione dell'estensione file
+- Nessun controllo del MIME type
+- Nessuna verifica del contenuto (magic bytes)
+- Nome file originale mantenuto (no sanitization)
+
+Protezioni implementate:
+- Path traversal: basename() e realpath() prevengono directory traversal
+- Autenticazione: richiesta sessione valida per l'upload
+
+
+3.3 Analisi File .htaccess
+---------------------------
+
+File: files/images/.htaccess
+
+<Files "flag.txt">
+    Require all denied
+</Files>
+
+Il file .htaccess blocca l'accesso diretto a flag.txt, ma NON impedisce
+l'esecuzione di file PHP nella stessa directory. Apache è configurato per
+interpretare ed eseguire qualsiasi file con estensione .php.
+
+=============================================================================
+4. ANALISI DELLA VULNERABILITÀ
+=============================================================================
+
+Tipo:            Unrestricted Upload of File with Dangerous Type
+Severity:        CRITICAL
+Impatto:         Remote Code Execution (RCE)
+
+Descrizione tecnica:
+L'applicazione accetta qualsiasi file senza validazione del tipo o contenuto.
+Poiché Apache è configurato per eseguire file PHP nella directory di upload
+(/files/images/), un attaccante può caricare uno script PHP malevolo che
+verrà interpretato ed eseguito dal server.
+
+Catena di attacco:
+1. Attaccante crea un file PHP con codice arbitrario
+2. File viene caricato tramite form di upload
+3. Apache interpreta il file come script PHP
+4. Codice dell'attaccante viene eseguito con privilegi www-data
+5. Script PHP può leggere flag.txt (stessa directory, nessuna restrizione PHP)
+
+=============================================================================
+5. EXPLOITATION
+=============================================================================
+
+5.1 STEP 1: Creazione del codice malevolo
+--------------------------------------
+
+Per sfruttare la vulnerabilità, creiamo un semplice script PHP che legge
+il contenuto del file flag.txt:
+
+File: file_malevolo.php
+
+┌─────────────────────────────────────────────────────────────┐
+│ <?php echo file_get_contents('flag.txt'); ?>                │
+└─────────────────────────────────────────────────────────────┘
+
+Spiegazione:
+- file_get_contents('flag.txt'): legge il file nella stessa directory
+- La funzione PHP bypassa le restrizioni .htaccess (solo HTTP bloccato)
+- echo: stampa il contenuto nel response HTTP
+
+
+5.2 STEP 2: Upload del file malevolo
+-----------------------------------
+
+1. Accedere al sito
+2. Nel form "Upload Image", selezionare il file "file_malevolo.php"
+3. Cliccare sul pulsante "Upload"
+4. Osservare il messaggio di successo:
+
+   "The file images/file_malevolo.php has been uploaded."
+
+Note:
+- Il browser potrebbe avvisare che il file non è un'immagine (ignorare)
+- Il controllo accept="image/*" è solo client-side e facilmente bypassabile
+- L'applicazione conferma il path esatto del file caricato
+
+
+5.3 STEP 3: Esecuzione e Lettura del Flag
+------------------------------------------
+
+Navigare direttamente all'URL del file caricato:
+
+URL: .../files/images/file_malevolo.php
+
+Quando Apache riceve la richiesta:
+1. Riconosce l'estensione .php
+2. Passa il file all'interprete PHP
+3. PHP esegue il codice (file_get_contents)
+4. Il contenuto di flag.txt viene letto dalla stessa directory
+5. Il flag viene stampato nella risposta HTTP
+
+Output della pagina:
+
+┌─────────────────────────────────────────────────────────────┐
+│ SNH{unr3str1ct3d_upl04d_n0_v4lid4ti0n}                      │
+└─────────────────────────────────────────────────────────────┘
+
+
+=============================================================================
+6. CONTROMISURE
+=============================================================================
+
+6.1 Validazione dell'Estensione
+-------------------------------------------
+
+Implementare whitelist delle estensioni consentite:
+
+<?php
+$allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
+$extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+
+if (!in_array($extension, $allowedExtensions)) {
+    die("Estensione non permessa");
+}
+?>
+
+
+6.2 Validazione MIME Type 
+----------------------------------------
+
+Verificare il Content-Type reale del file:
+
+<?php
+$finfo = finfo_open(FILEINFO_MIME_TYPE);
+$mimeType = finfo_file($finfo, $file['tmp_name']);
+$allowedMimes = ['image/jpeg', 'image/png', 'image/gif'];
+
+if (!in_array($mimeType, $allowedMimes)) {
+    die("Tipo di file non valido");
+}
+?>
+
+
+6.3 Validazione del Contenuto 
+------------------------------------------
+
+Verificare che il file sia realmente un'immagine:
+
+<?php
+$imageInfo = getimagesize($file['tmp_name']);
+if ($imageInfo === false) {
+    die("Il file non è un'immagine valida");
+}
+?>
+
+
+6.4 Rinomina File 
+------------------------------
+
+Generare nome univoco per evitare collisioni e prevedibilità:
+
+<?php
+$newFilename = uniqid('img_', true) . '.' . $extension;
+?>
+
+
+6.5 Directory Non Eseguibile 
+--------------------------------------
+
+Disabilitare l'esecuzione di PHP nella directory di upload.
+
+File: .htaccess in /files/images/
+
+php_flag engine off
+
+# Oppure
+<FilesMatch "\.php$">
+    Require all denied
+</FilesMatch>
+
+
+6.6 Storage Fuori Document Root 
+----------------------------------------------
+
+Salvare i file fuori dalla web root e servirli tramite script PHP:
+
+<?php
+// Upload in /var/uploads/ (fuori da /var/www/html/)
+$uploadDir = '/var/uploads/';
+// Servire tramite php con controlli
+?>
+
+
+6.7 Limiti Dimensione 
+------------------------------------
+
+Implementare controllo sulla dimensione massima:
+
+<?php
+$maxSize = 5 * 1024 * 1024; // 5MB
+if ($file['size'] > $maxSize) {
+    die("File troppo grande");
+}
+?>
+
