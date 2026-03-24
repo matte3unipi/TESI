@@ -1,8 +1,8 @@
-# DOCKERFILE VERSION BASE
+# DOCKERFILE VERSION MEDIUM
 FROM php:8.2-apache
 
 # Flag come parametrico per la build
-ENV FLAG="SNH{the_B3ANS_were_not_much_g00d_4nywaY}"
+ENV FLAG="SNH{p0lygl0t_byp4ss_str_p0s_f41l3d}"
 
 # Abilita mod_rewrite per .htaccess
 RUN a2enmod rewrite

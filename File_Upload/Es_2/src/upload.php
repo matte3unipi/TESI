@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
         exit;
     }
 
-    # Controllo che sia presente un'estensione valida (case-insensitive)
+    // Controllo che sia presente un'estensione valida (case-insensitive)
     $filenameLower = strtolower($filename);
     $isAllowed = false;
     foreach ($allowed_extensions as $ext) {
@@ -56,11 +56,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
         exit;
     }
 
-    # Protezione contro nomi file pericolosi e collisioni
+    // Protezione contro nomi file pericolosi e collisioni
     $safeName = uniqid('img_', true) . '_' . $filename;
 
-    # Protezione path traversal
-    $targetPath = 'files/images/' . $safeName;
+    // Verifica path traversal con realpath
+    $baseDir = __DIR__ . '/files/images/';
+    $targetPath = $baseDir . $safeName;
+    
+    $realPath = realpath(dirname($targetPath));
+    $realBase = realpath($baseDir);
+    
+    if ($realPath === false || $realBase === false || $realPath !== $realBase) {
+        header('Location: index.php?error=' . urlencode('Invalid file path'));
+        exit;
+    }
 
 
     if (move_uploaded_file($file['tmp_name'], $targetPath)) {
