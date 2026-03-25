@@ -9,29 +9,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // Filtro che blocca vari pattern pericolosi ma NON decodifica HTML entities
-    $dangerous_patterns = [
-        'javascript:',
-        'data:',
-        'vbscript:',
-        'onclick',
-        'onerror',
-        'onload',
-        'onmouseover',
-        '<',
-        '>',
-        ':'
-    ];
-
-    $blocked = false;
-    foreach ($dangerous_patterns as $pattern) {
-        if (stripos($url, $pattern) !== false) {
-            $blocked = true;
-            break;
-        }
+    // Filtro che blocca vari pattern pericolosi nell'URL
+    if (preg_match('/["\']|:|<|>|\bon\w+\s*=/i', $url)) {
+        header('Location: index.php?error=URL+bloccato+-+contenuto+non+permesso');
+        exit;
     }
 
-    if ($blocked) {
+    if (preg_match('/javascript|data|vbscript/i', $url)) {
         header('Location: index.php?error=URL+bloccato+-+contenuto+non+permesso');
         exit;
     }

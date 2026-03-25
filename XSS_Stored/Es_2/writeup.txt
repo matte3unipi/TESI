@@ -1,0 +1,350 @@
+=============================================================================
+WRITEUP - XSS Stored (Esercizio 2)
+=============================================================================
+
+Autore:         Canessa Matteo
+Difficoltà:     Medium
+Obiettivo:      Inserire uno script malevolo in un sito web vulnerabile.
+
+=============================================================================
+1. INFORMAZIONI TARGET
+=============================================================================
+
+Tecnologia:     PHP 8.2, Apache 2.4, Docker, Python 3.12
+Vulnerabilità:  XSS Stored (Cross-Site Scripting Stored)
+Flag:           SNH{X5S_st0r3d_AtTaCk_Det3cTeD_3ncod3d_5cr1pt}
+
+=============================================================================
+2. DESCRIZIONE SCENARIO
+=============================================================================
+
+L'applicazione web target è un semplice sistema di condivisione di prodotti,
+dove gli utenti possono lasciare una descrizione sui prodotti. Tuttavia,
+l'applicazione non sanitizza correttamente l'input degli utenti, rendendola
+vulnerabile a un attacco XSS Stored. L'obiettivo è inserire uno script
+malevolo in un campo di input che viene memorizzato, il quale potrà essere 
+eseguito dagli utenti che visualizzano la pagina vulnerabile.
+
+=============================================================================
+3. RECONNAISSANCE
+=============================================================================
+
+3.1 Analisi dell'Applicazione
+------------------------------
+
+- Pagina web con form per inserimento descrizione prodotto
+- Form contiene tre campi: "Name", "URL" e "Description"
+- Campo Name e Description hanno validazione client-side (pattern HTML)
+- Campo URL non ha alcuna restrizione visibile
+- Link "View Shared Products" per visualizzare tutti i prodotti condivisi
+- I prodotti salvati persistono e vengono mostrati a tutti gli utenti
+
+3.2 Analisi del Codice Sorgente
+--------------------------------
+
+File: index.php (semplificato)
+
+1. VALIDAZIONE INPUT:
+
+<?php
+$name = $_POST['name'];
+$url = $_POST['url'];
+$desc = $_POST['desc'];
+
+// Validazione che permette solo caratteri alfanumerici e spazi per Name e Description
+if(!preg_match('/^[a-zA-Z0-9 ]+$/', $name) || !preg_match('/^[a-zA-Z0-9 ]+$/', $desc)) {
+    header('Location: index.php?error=...');
+    exit;
+}
+
+// Filtro che blocca vari pattern pericolosi nell'URL
+if (preg_match('/["\']|:|<|>|\bon\w+\s*=/i', $url)) {
+    header('Location: index.php?error=...');
+    exit;
+}
+
+// Filtro specifico per bloccare schemi URL pericolosi
+if (preg_match('/javascript|data|vbscript/i', $url)) {
+    header('Location: index.php?error=...');
+    exit;
+}
+?>
+
+2. SALVATAGGIO DEI PRODOTTI:
+
+<?php
+$entry = "<p><strong>Nome prodotto:</strong> " . htmlspecialchars($name) . "<br>" .
+         "<strong>Link prodotto:</strong> <a href=\"" . $url . "\"> Clicca qui </a><br>" .
+         "<strong>Descrizione prodotto:</strong> " . htmlspecialchars($desc) .
+         "</p>" . PHP_EOL;
+file_put_contents('comments.txt', $entry, FILE_APPEND);
+?>
+
+
+File: view.php (semplificato)
+
+3. VISUALIZZAZIONE COMMENTI:
+
+<?php
+$comments = file_get_contents('comments.txt');
+echo $comments;  // Nessuna sanitizzazione
+?>
+
+
+Problemi identificati:
+- Campo "url" non ha restrizioni efficaci per encoding
+- Output dei commenti non viene sanitizzato, permettendo l'esecuzione di script malevoli
+
+Protezioni implementate:
+- Validazione client-side per "name" e "desc"
+- Filtro server-side per bloccare pattern pericolosi nell'URL
+- Filtro server-side per caratteri pericolosi in "name" e "desc"
+
+=============================================================================
+4. ANALISI DELLA VULNERABILITÀ
+=============================================================================
+
+Tipo:            XSS Stored (Cross-Site Scripting Stored)
+Severity:        HIGH
+Impatto:         Possibile esecuzione di script malevoli su tutti gli utenti
+
+Descrizione tecnica:
+L'applicazione è vulnerabile a un attacco XSS Stored perché non sanitizza 
+correttamente l'input degli utenti, in particolare il campo "url". Anche se sono
+presenti filtri per bloccare schemi URL pericolosi, questi non decodificano le
+HTML entities, permettendo a un attaccante di bypassare i filtri e inserire
+script malevoli che vengono memorizzati e eseguiti quando altri utenti 
+cliccano sul link del prodotto.
+
+Se un attaccante riesce a inserire un URL come "javascript:alert('XSS')",
+questo script verrà eseguito quando un utente clicca sul link, causando un
+potenziale furto di cookie, sessioni o altre azioni malevoli.
+
+Catena di attacco:
+1. L'attaccante inserisce un prodotto con un URL malevolo
+2. Il prodotto viene salvato e memorizzato
+3. Altri utenti visualizzano la pagina dei prodotti condivisi e cliccano sul link
+4. Lo script malevolo viene eseguito, causando potenziali danni.
+
+=============================================================================
+5. EXPLOITATION
+=============================================================================
+
+5.1 STEP 1: Creazione del Payload
+----------------------------------
+
+Per sfruttare la vulnerabilità, l'attaccante può inserire un prodotto con un 
+URL malevolo, ad esempio:
+
+Payload base:
+┌─────────────────────────────────────────────────────────────┐
+│ javascript:alert('XSS Stored Attack Detected')             │
+└─────────────────────────────────────────────────────────────┘
+
+5.2 STEP 2: Bypass dei Filtri
+------------------------------
+
+Per bypassare i filtri che bloccano schemi URL pericolosi, l'attaccante può
+utilizzare HTML entities per mascherare il payload:
+
+Payload con encoding:
+┌─────────────────────────────────────────────────────────────┐
+│ javascript&#58;alert('XSS Stored Attack Detected')          │
+└─────────────────────────────────────────────────────────────┘
+
+5.3 STEP 3: Inserimento del Payload
+------------------------------
+
+1. Accedere alla pagina di inserimento del prodotto
+2. Compilare i campi "Name" e "Description" con valori validi
+3. Inserire il payload encoded nel campo "URL"
+4. Inviare il form per salvare il prodotto
+5. Il form reindirizza automaticamente alla pagina dei prodotti condivisi
+
+    
+5.4 STEP 4: Esecuzione del Payload
+------------------------------
+
+1. Altri utenti visualizzano la pagina dei prodotti condivisi
+2. Cliccano sul link del prodotto con il payload malevolo
+3. Lo script viene eseguito
+
+
+5.5 STEP 5: Rilevamento Attacco e Flag
+---------------------------------------
+
+L'applicazione implementa un meccanismo di rilevamento XSS tramite script Python
+che scansiona automaticamente i prodotti alla ricerca di tag pericolosi.
+
+Meccanismo di rilevamento (view.php):
+
+1. Output buffering cattura l'HTML renderizzato della pagina
+   <?php ob_start(); ?>
+
+2. Pagina viene generata con i prodotti (incluso il payload XSS)
+
+3. Contenuto HTML completo viene salvato in file temporaneo
+   <?php
+   $html_page = ob_get_contents();
+   file_put_contents('view_rendered.html', $html_page);
+   ?>
+
+4. Script Python viene eseguito per analizzare l'HTML salvato
+   <?php system("python3 check_attack.py view_rendered.html"); ?>
+
+
+Script Python (check_attack.py - semplificato):
+
+import re
+from bs4 import BeautifulSoup
+
+# Legge l'HTML renderizzato
+with open(file_path, 'r') as file:
+    content = file.read()
+    soup = BeautifulSoup(content, 'html.parser')
+
+    # Cerca javascript: nei link
+    for tag in soup.find_all('a', href=True):
+        elem = tag['href'].strip().lower()
+        if elem.startswith("javascript:"):
+            print(os.getenv("FLAG", "FLAG{default_flag}"))
+            break
+
+Quando un link con javascript: viene rilevato, lo script Python stampa la flag:
+
+┌─────────────────────────────────────────────────────────────┐
+│ SNH{X5S_st0r3d_AtTaCk_Det3cTeD_3ncod3d_5cr1pt}              │
+└─────────────────────────────────────────────────────────────┘
+
+La flag appare nell'output della pagina sotto i commenti, confermando
+che l'attacco XSS Stored è stato eseguito con successo.
+
+=============================================================================
+6. CONTROMISURE
+=============================================================================
+
+6.1 CORREZIONE CRITICA: Decodifica HTML Entities Prima della Validazione
+-------------------------------------------------------------------------
+
+La vulnerabilità principale è che i filtri regex operano sul testo grezzo prima
+che il browser decodifichi le HTML entities. Quando il browser renderizza
+l'attributo href, converte automaticamente &#58; in :, bypassando il filtro.
+
+CODICE VULNERABILE (estratto da index.php):
+┌─────────────────────────────────────────────────────────────┐
+│ // Filtro che blocca vari pattern pericolosi nell'URL       │
+│ if (preg_match('/["\']|:|<|>|\bon\w+\s*=/i', $url)) {       │
+│     header('Location: index.php?error=...');                │
+│     exit;                                                   │
+│ }                                                           │
+│                                                             │
+│ if (preg_match('/javascript|data|vbscript/i', $url)) {      │
+│     header('Location: index.php?error=...');                │
+│     exit;                                                   │
+│ }                                                           │
+└─────────────────────────────────────────────────────────────┘
+
+Problema:
+- Input: javascript&#58;alert('XSS')
+- Regex vede: "javascript", "&#", "58", ";" (nessun ":" trovato)
+- Browser decodifica: javascript:alert('XSS')
+
+CODICE CORRETTO:
+┌───────────────────────────────────────────────────────────────┐
+│ // Decodifica prima di validare                               │
+│ $decodedUrl = html_entity_decode($url, ENT_QUOTES, 'UTF-8');  │
+│                                                               │
+│ // Ora valida sull'URL decodificato                           │
+│ if (preg_match('/["\']|:|<|>|\bon\w+\s*=/i', $decodedUrl)) {  │
+│     header('Location: index.php?error=...');                  │
+│     exit;                                                     │
+│ }                                                             │
+│                                                               │
+│ if (preg_match('/javascript|data|vbscript/i', $decodedUrl)) { │
+│     header('Location: index.php?error=...');                  │
+│     exit;                                                     │
+│ }                                                             │
+└───────────────────────────────────────────────────────────────┘
+
+
+6.2 Whitelist di Protocolli Permessi
+-------------------------------------
+
+Invece di bloccare protocolli pericolosi (blacklist), permettere solo
+protocolli sicuri (whitelist):
+
+<?php
+// Estrai il protocollo dall'URL
+$decodedUrl = html_entity_decode($url, ENT_QUOTES, 'UTF-8');
+$parsedUrl = parse_url($decodedUrl);
+
+// Whitelist di protocolli sicuri
+$allowedSchemes = ['http', 'https'];
+
+if (!isset($parsedUrl['scheme']) ||
+    !in_array(strtolower($parsedUrl['scheme']), $allowedSchemes)) {
+    header('Location: index.php?error=Solo+HTTP+e+HTTPS+permessi');
+    exit;
+}
+?>
+
+Blocca qualsiasi URL che non inizi con http:// o https://.
+
+
+6.3 Sanitizzazione dell'Output nell'attributo href
+---------------------------------------------------
+
+Anche se la validazione input è corretta, aggiungere sanitizzazione
+dell'output per difesa in profondità:
+
+<?php
+// Usa htmlspecialchars anche per l'URL nell'attributo href
+$entry = "<p><strong>Nome prodotto:</strong> " . htmlspecialchars($name) . "<br>" .
+         "<strong>Link prodotto:</strong> <a href=\"" .
+         htmlspecialchars($url) .
+         "\"> Clicca qui </a><br>" .
+         "<strong>Descrizione prodotto:</strong> " . htmlspecialchars($desc) .
+         "</p>" . PHP_EOL;
+?>
+
+Nota importante:
+htmlspecialchars() NON decodifica le entities già presenti, ma previene
+l'iniezione di nuovi caratteri pericolosi.
+
+
+6.4 Content Security Policy (CSP)
+----------------------------------
+
+Implementare CSP per bloccare l'esecuzione di javascript: URLs:
+
+File: .htaccess
+┌─────────────────────────────────────────────────────────────┐
+│ Header set Content-Security-Policy "default-src 'self'; \   │
+│ script-src 'self'; style-src 'self' 'unsafe-inline';"       │
+└─────────────────────────────────────────────────────────────┘
+
+Oppure in PHP:
+<?php
+header("Content-Security-Policy: default-src 'self'; script-src 'self';");
+?>
+
+Limitazioni: CSP blocca script inline nei tag <script>, ma NON blocca sempre
+    javascript: URLs negli attributi href.
+
+
+6.5 Uso di rel="noopener noreferrer"
+-------------------------------------
+
+Per i link esterni, aggiungere attributi di sicurezza:
+
+<?php
+$entry = "<p><strong>Link prodotto:</strong> " .
+         "<a href=\"" . htmlspecialchars($validatedUrl) . "\" " .
+         "rel=\"noopener noreferrer\" target=\"_blank\"> Clicca qui </a><br>" .
+         "</p>";
+?>
+
+Protezioni:
+- noopener: Previene che la pagina di destinazione acceda a window.opener
+- noreferrer: Non invia il referer header alla pagina di destinazione
+- target="_blank": Apre in nuova tab (migliore UX per link esterni)

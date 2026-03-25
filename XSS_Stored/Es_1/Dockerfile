@@ -8,7 +8,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Flag come parametrico per la build
-ENV FLAG="SHN{X5S_st0r3d_AtTaCk_Det3cTeD_Tag_5cr1pt}"
+ENV FLAG="SNH{X5S_st0r3d_AtTaCk_Det3cTeD_Tag_5cr1pt}"
 
 # Copia i file dell'applicazione
 COPY index.php /var/www/html/
