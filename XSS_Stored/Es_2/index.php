@@ -10,15 +10,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Filtro che blocca vari pattern pericolosi nell'URL
-    if (preg_match('/["\']|:|<|>|\bon\w+\s*=/i', $url)) {
+    if (preg_match('/["\']|javascript:|<|>|\bon\w+\s*=/i', $url)) {
         header('Location: index.php?error=URL+bloccato+-+contenuto+non+permesso');
         exit;
     }
 
-    if (preg_match('/javascript|data|vbscript/i', $url)) {
-        header('Location: index.php?error=URL+bloccato+-+contenuto+non+permesso');
-        exit;
-    }
 
     // Crea automaticamente un link cliccabile con l'URL fornito
     $entry = "<p><strong>Nome prodotto:</strong> " . htmlspecialchars($name) . "<br>" .
