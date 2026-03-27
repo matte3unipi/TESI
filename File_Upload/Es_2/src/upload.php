@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
     $file = $_FILES['image'];
 
     // Whitist estensionie e MIME types
-    $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif'];
+    $allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif'];
     $allowed_mimes = ['image/jpeg', 'image/png', 'image/gif'];
 
     // Limite dimensione (es. 3MB)
@@ -22,24 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
         exit;
     }
 
-    // Verifico size image caricata (> 0) e presenza dimensioni
-    $imgInfo = getimagesize($file['tmp_name']);
-    if ($imgInfo === false || $imgInfo[0] <= 0 || $imgInfo[1] <= 0) {
-        header('Location: index.php?error=' . urlencode('Size image invalid.'));
-        exit;
-    }
-
     $filename = basename($file['name']);
-
-    // Verifico MIME type
-    $info = finfo_open(FILEINFO_MIME_TYPE);
-    $mimeType = finfo_file($info, $file['tmp_name']);
-    finfo_close($info);
-
-    if (!in_array($mimeType, $allowed_mimes)) {
-        header('Location: index.php?error=' . urlencode('Invalid file content. Not a real image.'));
-        exit;
-    }
 
     // Controllo che sia presente un'estensione valida (case-insensitive)
     $filenameLower = strtolower($filename);
@@ -55,6 +38,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
         header('Location: index.php?error=' . urlencode('Invalid file type. Only JPG, PNG, GIF allowed.'));
         exit;
     }
+
+    // Verifico size image caricata (> 0) e presenza dimensioni
+    $imgInfo = getimagesize($file['tmp_name']);
+    if ($imgInfo === false || $imgInfo[0] <= 0 || $imgInfo[1] <= 0) {
+        header('Location: index.php?error=' . urlencode('Size image invalid.'));
+        exit;
+    }
+
+    // Verifico MIME type
+    $info = finfo_open(FILEINFO_MIME_TYPE);
+    $mimeType = finfo_file($info, $file['tmp_name']);
+    finfo_close($info);
+
+    if (!in_array($mimeType, $allowed_mimes)) {
+        header('Location: index.php?error=' . urlencode('Invalid file content. Not a real image.'));
+        exit;
+    }
+
 
     // Protezione contro nomi file pericolosi e collisioni
     $safeName = uniqid('img_', true) . '_' . $filename;

@@ -81,7 +81,7 @@ File: view.php (semplificato)
 
 <?php
 $comments = file_get_contents('comments.txt');
-echo $comments;  // Nessuna sanitizzazione
+echo $comments;  // Nessuna sanificazione
 ?>
 
 
@@ -164,55 +164,6 @@ Payload con encoding:
 3. Lo script viene eseguito
 
 
-5.5 STEP 5: Rilevamento Attacco e Flag
----------------------------------------
-
-L'applicazione implementa un meccanismo di rilevamento XSS tramite script Python
-che scansiona automaticamente i prodotti alla ricerca di tag pericolosi.
-
-Meccanismo di rilevamento (view.php):
-
-1. Output buffering cattura l'HTML renderizzato della pagina
-   <?php ob_start(); ?>
-
-2. Pagina viene generata con i prodotti (incluso il payload XSS)
-
-3. Contenuto HTML completo viene salvato in file temporaneo
-   <?php
-   $html_page = ob_get_contents();
-   file_put_contents('view_rendered.html', $html_page);
-   ?>
-
-4. Script Python viene eseguito per analizzare l'HTML salvato
-   <?php system("python3 check_attack.py view_rendered.html"); ?>
-
-
-Script Python (check_attack.py - semplificato):
-
-import re
-from bs4 import BeautifulSoup
-
-# Legge l'HTML renderizzato
-with open(file_path, 'r') as file:
-    content = file.read()
-    soup = BeautifulSoup(content, 'html.parser')
-
-    # Cerca javascript: nei link
-    for tag in soup.find_all('a', href=True):
-        elem = tag['href'].strip().lower()
-        if elem.startswith("javascript:"):
-            print(os.getenv("FLAG", "FLAG{default_flag}"))
-            break
-
-Quando un link con javascript: viene rilevato, lo script Python stampa la flag:
-
-┌─────────────────────────────────────────────────────────────┐
-│ SNH{X5S_st0r3d_AtTaCk_Det3cTeD_3ncod3d_5cr1pt}              │
-└─────────────────────────────────────────────────────────────┘
-
-La flag appare nell'output della pagina sotto i commenti, confermando
-che l'attacco XSS Stored è stato eseguito con successo.
-
 =============================================================================
 6. CONTROMISURE
 =============================================================================
@@ -276,10 +227,10 @@ if (!isset($parsedUrl['scheme']) ||
 Blocca qualsiasi URL che non inizi con http:// o https://.
 
 
-6.3 Sanitizzazione dell'Output nell'attributo href
+6.3 Sanificazione dell'Output nell'attributo href
 ---------------------------------------------------
 
-Anche se la validazione input è corretta, aggiungere sanitizzazione
+Anche se la validazione input è corretta, aggiungere sanificazione
 dell'output per difesa in profondità:
 
 <?php

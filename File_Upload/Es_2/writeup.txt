@@ -65,7 +65,7 @@ Controlli implementati:
    }
    ?>
 
-2. VALIDAZIONE CONTENUTO IMMAGINE:
+2. VALIDAZIONE MIME E DIMENSIONE IMMAGINE:
 
    <?php
    $imgInfo = getimagesize($file['tmp_name']);
@@ -74,8 +74,6 @@ Controlli implementati:
        exit;
    }
    ?>
-
-3. VALIDAZIONE MIME TYPE:
 
    <?php
    $info = finfo_open(FILEINFO_MIME_TYPE);
@@ -86,7 +84,7 @@ Controlli implementati:
    }
    ?>
 
-4. VALIDAZIONE ESTENSIONE - VULNERABILE:
+3. VALIDAZIONE ESTENSIONE - VULNERABILE:
 
    <?php
    $filenameLower = strtolower($filename);
@@ -99,14 +97,14 @@ Controlli implementati:
    }
    ?>
 
-5. NOME FILE UNIVOCO:
+4. CAMBIO FILE NOME UNIVOCO:
 
    <?php
    $filename = basename($file['name']);
    $safeName = uniqid('img_', true) . '_' . $filename;
    ?>
 
-6. PATH TRAVERSAL PROTECTION:
+5. PATH TRAVERSAL PROTECTION:
 
    <?php
    $baseDir = __DIR__ . '/files/images/';
@@ -122,9 +120,9 @@ Controlli implementati:
    ?>
 
 Problemi identificati:
-- strpos() verifica solo la PRESENZA della stringa, non la posizione finale
-- Un file "image.jpg.php" passa il controllo perché contiene "jpg"
-- Apache interpreta l'estensione FINALE (.php), non le precedenti
+- strpos() verifica solo la PRESENZA della stringa .jpg, non la posizione finale
+- Un file "image.jpg.php" passa il controllo perché contiene ".jpg"
+- Apache interpreta l'estensione FINALE .php e esegue il codice
 
 Protezioni implementate:
 - Path traversal: basename() e realpath() prevengono directory traversal
@@ -136,12 +134,6 @@ Protezioni implementate:
 
 3.3 Analisi File .htaccess
 ---------------------------
-
-File: files/images/.htaccess
-
-<Files "flag.txt">
-    Require all denied
-</Files>
 
 Il file .htaccess blocca l'accesso HTTP diretto a flag.txt, ma NON impedisce
 l'esecuzione di file PHP nella stessa directory. Script PHP possono comunque

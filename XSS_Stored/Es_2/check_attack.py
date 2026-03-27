@@ -7,29 +7,30 @@ import re
 import os
 import html
 from bs4 import BeautifulSoup
+import requests
 
-def check_attack(file_path):
-    # Verifica se il file esiste
-    if not os.path.exists(file_path):
+def check_attack(url):
+
+    response = requests.get(url)
+    if response.status_code != 200:
+        print("Failed to fetch the page.")
         return
 
-    with open(file_path, 'r') as file:
-        content = file.read()
+    # Decodifica HTML entities (es: &colon; -> :, &#58; -> :)
+    decoded_content = html.unescape(response.text)
+    soup = BeautifulSoup(decoded_content, 'html.parser')
 
-        # Decodifica HTML entities (es: &colon; -> :, &#58; -> :)
-        decoded_content = html.unescape(content)
-        soup = BeautifulSoup(decoded_content, 'html.parser')
+    # Controlla se ci sono tag <a> con href che inizia con "javascript:"
+    for tag in soup.find_all('a', href=True):
+        elem = tag['href'].strip().lower()
+        if elem.startswith("javascript:"):
+            print(os.getenv("FLAG", "FLAG{default_flag}"))
+            break
 
-        # Controlla se ci sono tag <a> con href che inizia con "javascript:"
-        for tag in soup.find_all('a', href=True):
-            elem = tag['href'].strip().lower()
-            if elem.startswith("javascript:"):
-                print(os.getenv("FLAG", "FLAG{default_flag}"))
-                break
-    file.close()
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         sys.exit(1)
-    file_path = sys.argv[1]
-    check_attack(file_path)
+
+    url = sys.argv[1]
+    check_attack(url)

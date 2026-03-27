@@ -1,6 +1,3 @@
-<?php
-ob_start();
-?>
 <html>
 <head>
     <title>Shared Links</title>
@@ -54,14 +51,10 @@ ob_start();
 
     <p>
     <?php
-    $html_page = ob_get_contents();
-    $temp_file = 'view_rendered.html';
-    file_put_contents($temp_file, $html_page . '</p></body></html>');
-    system("python3 check_attack.py " . $temp_file);
+    if (!isset($_GET['bot'])) {
+        system("python3 check_attack.py http://localhost/view.php?bot=1");
+    }
     ?>
     </p>
 </body>
 </html>
-<?php
-ob_end_flush(); 
-?>

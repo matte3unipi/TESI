@@ -5,6 +5,7 @@ FROM php:8.2-apache
 RUN apt-get update && \
     apt-get install -y python3 python3-pip && \
     pip install beautifulsoup4 --break-system-packages && \
+    pip install requests --break-system-packages && \
     rm -rf /var/lib/apt/lists/*
 
 # Flag come parametrico per la build
