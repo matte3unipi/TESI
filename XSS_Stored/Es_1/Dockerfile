@@ -11,18 +11,20 @@ RUN apt-get update && \
 # Flag come parametrico per la build
 ENV FLAG="SNH{X5S_st0r3d_AtTaCk_Det3cTeD_Tag_5cr1pt}"
 
+WORKDIR /var/www/html/
+
 # Copia i file dell'applicazione
-COPY index.php /var/www/html/
-COPY view.php /var/www/html/
-COPY check_attack.py /var/www/html/
+COPY index.php .
+COPY view.php .
+COPY check_attack.py .
 
 # Configura permessi per il file dei commenti e per l'applicazione
-RUN touch /var/www/html/comments.txt && \
-    chown www-data:www-data /var/www/html/comments.txt && \
-    chmod 666 /var/www/html/comments.txt && \
-    chown -R www-data:www-data /var/www/html/ && \
-    chmod 775 /var/www/html/ && \
-    chmod +x /var/www/html/check_attack.py
+RUN touch comments.txt && \
+    chown www-data:www-data comments.txt && \
+    chmod 666 comments.txt && \
+    chown -R www-data:www-data . && \
+    chmod 775 . && \
+    chmod +x check_attack.py
     
 # Configura permessi per le sessioni PHP
 RUN mkdir -p /var/lib/php/sessions && \
