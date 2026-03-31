@@ -1,0 +1,36 @@
+# Devo verificare che all'interno del file dove viene chiamata la funzione <?php system("check_attack.py /this_page.php");?>
+# $input=javascript:alert(1) BLOCCATA
+# $input=javascript&x??;alert(1) PASSA ED ESEGUE
+
+import sys
+import re
+import os
+import html
+from bs4 import BeautifulSoup
+import requests
+
+def check_attack(url):
+
+    response = requests.get(url)
+    if response.status_code != 200:
+        print("Failed to fetch the page.")
+        return
+
+    # Decodifica HTML entities (es: &colon; -> :, &#58; -> :)
+    decoded_content = html.unescape(response.text)
+    soup = BeautifulSoup(decoded_content, 'html.parser')
+
+    # Controlla se ci sono tag <a> con href che inizia con "javascript:"
+    for tag in soup.find_all('a', href=True):
+        elem = tag['href'].strip().lower()
+        if elem.startswith("javascript:"):
+            print(os.getenv("FLAG", "FLAG{default_flag}"))
+            break
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        sys.exit(1)
+
+    url = sys.argv[1]
+    check_attack(url)

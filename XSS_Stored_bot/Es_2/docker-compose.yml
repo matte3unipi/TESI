@@ -1,0 +1,34 @@
+services:
+  # PHP/Apache web application
+  web:
+    build:
+      context: ./web          
+    container_name: ctf-web
+    environment:
+      FLAG: "SNH{X5S_st0r3d_AtTaCk_Det3cTeD_Tag_5cr1pt}"
+    expose:
+      - "80"
+    ports:
+      - "8080:80"             
+    networks:
+      - ctf-net
+    restart: unless-stopped
+
+  # Puppeteer bot (headless Chromium)
+  bot:
+    build:
+      context: ./bot
+    container_name: ctf-bot
+    environment:
+      TARGET_URL: "http://web/view.php"
+      FLAG: "SNH{X5S_st0r3d_AtTaCk_Det3cTeD_Tag_5cr1pt}"
+      INTERVAL: "15000"
+    networks:
+      - ctf-net
+    depends_on:
+      - web
+    restart: unless-stopped
+
+networks:
+  ctf-net:
+    driver: bridge
