@@ -3,7 +3,6 @@ services:
   web:
     build:
       context: ./web          
-    container_name: ctf-web
     environment:
       FLAG: "${FLAG}"
     expose:
@@ -18,7 +17,6 @@ services:
   bot:
     build:
       context: ./bot
-    container_name: ctf-bot
     environment:
       TARGET_URL: "http://web/view.php"
       FLAG: "${FLAG}"

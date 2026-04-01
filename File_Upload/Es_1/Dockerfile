@@ -1,5 +1,5 @@
-# DOCKERFILE VERSION BASE
-FROM php:8.2-apache
+# DOCKERFILE FILE UPLOAD 1
+FROM php:8.2.30-apache
 
 # Flag come parametrico per la build
 ENV FLAG="SNH{unr3str1ct3d_upl04d_n0_v4lid4ti0n}"

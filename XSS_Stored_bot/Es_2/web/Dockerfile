@@ -1,4 +1,4 @@
-# DOCKERFILE VERSION XSS STORED BASE
+# DOCKERFILE VERSION XSS STORED 2
 FROM php:8.2.30-apache
 
 # Installa Python3 e BeautifulSoup per check_attack.py

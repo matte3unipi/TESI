@@ -19,6 +19,10 @@ async function visitPage() {
         });
 
         const page = await browser.newPage();
+        page.on('dialog', async dialog => {
+            console.log(`[${new Date().toISOString()}] Bot dismissing dialog: ${dialog.message()}`);
+            await dialog.dismiss();
+        });
 
         // Set cookie con le credenziali dell'admin (FLAG) prima di visitare la pagina
         await page.setCookie({
