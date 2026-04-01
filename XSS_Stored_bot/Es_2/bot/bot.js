@@ -32,29 +32,20 @@ async function visitPage() {
         console.log(`[${new Date().toISOString()}] Bot visiting: ${TARGET_URL}`);
         await page.goto(TARGET_URL, { waitUntil: 'networkidle2', timeout: 10000 });
 
-        // Deve vedere se ci sono link e cliccarli per simulare l'interazione dell'admin
-        const links = await page.$$('a');
-        for (const link of links) {
-            console.log(`[${new Date().toISOString()}] Bot clicking link: ${await page.evaluate(el => el.href, link)}`);
-            await page.evaluate(el => el.dispatchEvent(new MouseEvent('click')), link);
-            await new Promise(r => setTimeout(r, 3000));
-        }
-
-
 
         // Versione in cui gestisco correttamente anche i link normali (extra)
-        //const links = await page.$$('a');
-        //const hrefs = await page.$$eval('a', anchors => anchors.map(a => a.href));
-        //
-        //for (let i = 0; i < hrefs.length; i++) {
-        //    console.log(`[${new Date().toISOString()}] Bot clicking link: ${hrefs[i]}`);
-        //    if (hrefs[i].startsWith('javascript:')) {
-        //        await page.evaluate(el => el.dispatchEvent(new MouseEvent('click')), links[i]);
-        //        await new Promise(r => setTimeout(r, 5000));
-        //    } else {
-        //        await page.goto(hrefs[i], { waitUntil: 'networkidle2', timeout: 10000 });
-        //    }
-        //}
+        const hrefs = await page.$$eval('a', anchors => anchors.map(a => a.href));
+
+        for (let i = 0; i < hrefs.length; i++) {
+            console.log(`[${new Date().toISOString()}] Bot clicking link: ${hrefs[i]}`);
+
+            if (hrefs[i].startsWith('javascript:')) {
+                await page.evaluate(el => el.dispatchEvent(new MouseEvent('click')), await page.$(`a[href="${hrefs[i]}"]`));
+                await new Promise(r => setTimeout(r, 3000));
+            } else {
+                await page.goto(hrefs[i], { waitUntil: 'networkidle2', timeout: 10000 });
+            }
+        }
 
         console.log(`[${new Date().toISOString()}] Bot visit complete.`);
 

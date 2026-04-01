@@ -1,11 +1,11 @@
 # DOCKERFILE VERSION XSS STORED BASE
-FROM php:8.2-apache
+FROM php:8.2.30-apache
 
 # Installa Python3 e BeautifulSoup per check_attack.py
 RUN apt-get update && \
     apt-get install -y python3 python3-pip && \
-    pip install beautifulsoup4 --break-system-packages && \
-    pip install requests --break-system-packages && \
+    pip install beautifulsoup4==4.14.3 --break-system-packages && \
+    pip install requests==2.33.1 --break-system-packages && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /var/www/html
@@ -15,7 +15,7 @@ COPY index.php .
 COPY view.php .
 COPY check_attack.py .
 
-# Configura permessi per il file dei commenti e per l'applicazione
+# Crea file comments.txt vuoto con permessi corretti
 RUN touch comments.txt && \
     chown www-data:www-data comments.txt && \
     chmod 666 comments.txt && \
