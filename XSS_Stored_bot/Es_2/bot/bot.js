@@ -42,12 +42,22 @@ async function visitPage() {
 
         for (let i = 0; i < hrefs.length; i++) {
             console.log(`[${new Date().toISOString()}] Bot clicking link: ${hrefs[i]}`);
-
-            if (hrefs[i].startsWith('javascript:')) {
-                await page.evaluate(el => el.dispatchEvent(new MouseEvent('click')), await page.$(`a[href="${hrefs[i]}"]`));
-                await new Promise(r => setTimeout(r, 3000));
-            } else {
-                await page.goto(hrefs[i], { waitUntil: 'networkidle2', timeout: 10000 });
+            try {
+                if (hrefs[i].startsWith('javascript:')) {
+                    await page.evaluate(el => el.dispatchEvent(
+                        new MouseEvent('click')), 
+                        await page.$(`a[href="${hrefs[i]}"]`)
+                    );
+                    await new Promise(r => setTimeout(r, 3000));
+                    if (page.url() !== TARGET_URL) {
+                        await page.goto(TARGET_URL, { waitUntil: 'networkidle2', timeout: 10000 });
+                    }
+                } else {
+                    await page.goto(hrefs[i], { waitUntil: 'networkidle2', timeout: 10000 });
+                }
+            } catch(err) {
+                await page.goto(TARGET_URL, { waitUntil: 'networkidle2', timeout: 10000 });
+                console.error(`[${new Date().toISOString()}] Bot error visiting link ${hrefs[i]}: ${err.message}`);
             }
         }
 
