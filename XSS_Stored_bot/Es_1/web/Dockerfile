@@ -13,15 +13,13 @@ WORKDIR /var/www/html
 # Copia i file dell'applicazione
 COPY index.php .
 COPY view.php .
-COPY check_attack.py .
 
 # Crea file comments.txt vuoto con permessi corretti
 RUN touch comments.txt && \
     chown www-data:www-data comments.txt && \
     chmod 666 comments.txt && \
     chown -R www-data:www-data . && \
-    chmod 775 . && \
-    chmod +x check_attack.py
+    chmod 775 .
 
 # Configura permessi per le sessioni PHP
 RUN mkdir -p /var/lib/php/sessions && \

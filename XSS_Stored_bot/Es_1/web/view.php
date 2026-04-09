@@ -49,12 +49,5 @@
     ?>
     <a href="index.php">Share a Comment</a>
 
-    <p>
-    <?php
-        if (!isset($_GET['bot'])) {
-            system("python3 check_attack.py http://localhost/view.php?bot=1");
-        }
-    ?>
-    </p>
 </body>
 </html>
